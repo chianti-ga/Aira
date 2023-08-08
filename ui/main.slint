@@ -1,0 +1,36 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+
+// Customs Widgets
+component AppBox inherits Rectangle {
+        background: #10141D;
+        opacity: 50%;
+        border-radius: 25px;
+        border-color: #981764;
+        border-width: 2px;
+        drop-shadow-color: #981764;
+        drop-shadow-blur: 5px;
+        //drop-shadow-offset-x: 10px;
+        drop-shadow-offset-y: 5px;
+
+}
+
+export component App inherits Window {
+    title: @tr("gmod_3d_packager");
+
+    width: 1024px;
+    height: 768px;
+
+    background: #1E1E1E;
+
+    GridLayout {
+    spacing: 10px;
+    padding: 10px;
+        AppBox {
+        row: 0;
+        }
+
+        AppBox {
+        row: 3;
+        }
+    }
+}
