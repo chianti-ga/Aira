@@ -23,6 +23,8 @@ component Ropes inherits VerticalBox{
 
 component FileSelection {
     in property<string> text-string;
+    in property<string> lineEdit-string;
+    callback clicked();
     HorizontalLayout {
         spacing: 10px;
 
@@ -32,18 +34,26 @@ component FileSelection {
         vertical-alignment: center;
         }
 
-        path_edit:=LineEdit {}
+        path_edit:=LineEdit {
+        text: lineEdit-string;
+        }
 
-        Button {
+        btn_selec:=Button {
         text: "...";
+        clicked => {clicked()}
         }
     }
 }
 
-export component App inherits Window {
-    //Rust accessible properties
-    in-out property<string> logs;
+export global BtnLogic {
+    pure callback btn-gmod-bin-selection();
+    pure callback btn-models-selection();
+    pure  callback btn-materials-selection();
+    pure  callback btn-qc_selection();
+    pure callback btn-compile();
+}
 
+export component App inherits Window {
     title: @tr("gmod_3d_packager");
 
     min-width: 1024px;
@@ -56,6 +66,10 @@ export component App inherits Window {
     property<length> HEADING_1 :28px;
     property<length> HEADING_2 :16px;
     property<length> HEADING_3 :13px;
+
+    //Rust
+    in-out property<string> logs;
+    out property<bool> is_batch_compilation;
 
     Ropes{
         width: parent.width;
@@ -83,17 +97,21 @@ export component App inherits Window {
 
                 gmod_bin_selection:=FileSelection {
                     text-string: @tr("text_gmod_bin_selec");
+                    clicked => {BtnLogic.btn-gmod-bin-selection()}
                 }
 
                 models_selection:=FileSelection {
                     text-string: @tr("text_models_selec");
+                    clicked => {BtnLogic.btn-models-selection()}
                 }
                 materials_selection:= FileSelection {
                     text-string: @tr("text_materials_selec");
+                    clicked => {BtnLogic.btn-materials-selection()}
                 }
 
                 qc_selection:=FileSelection {
                     text-string: @tr("text_qc_file_selec");
+                    clicked => {BtnLogic.btn-qc-selection()}
                 }
 
                 HorizontalLayout {
@@ -104,12 +122,13 @@ export component App inherits Window {
                     }
 
                     batch_compilation := CheckBox {
-
+                        toggled => {root.is_batch-compilation}
                     }
                 }
 
                 btn_compile:=Button {
                 text: @tr("btn_models_compile");
+                clicked => {BtnLogic.btn-compile()}
                 }
             }
         }
@@ -135,7 +154,7 @@ export component App inherits Window {
                 ScrollView {
                     viewport-height: parent.height;
                     qc_list:= ListView {
-
+                        
                     }
                 }
             }
