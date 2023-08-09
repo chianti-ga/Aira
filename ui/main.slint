@@ -1,36 +1,192 @@
-import { Button, VerticalBox } from "std-widgets.slint";
+import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView} from "std-widgets.slint";
 
-// Customs Widgets
 component AppBox inherits Rectangle {
-        background: #10141D;
-        opacity: 50%;
-        border-radius: 25px;
-        border-color: #981764;
-        border-width: 2px;
-        drop-shadow-color: #981764;
-        drop-shadow-blur: 5px;
-        //drop-shadow-offset-x: 10px;
-        drop-shadow-offset-y: 5px;
+    background: #10141D80;
+    //opacity: 50%;
+    border-radius: 25px;
+    border-color: #981764;
+    border-width: 2px;
+    /*drop-shadow-color: #981764;
+    drop-shadow-blur: 5px;
+    drop-shadow-offset-y: 5px;*/
+}
 
+component Ropes inherits VerticalBox{
+    @children
+    spacing: 1px;
+    Path {
+        commands: "M0 192.664C179.238 129.078 320.351 -1.01386 542.243 3.09507C739.141 6.74117 864.924 114.222 1024 169.191 M0 206.332C179.238 142.746 320.351 12.6541 542.243 16.763C739.141 20.4092 864.924 127.89 1024 182.859 M0 220C179.238 156.414 320.351 26.3221 542.243 30.431C739.141 34.0771 864.924 141.558 1024 196.527";
+        stroke-width: 5px;
+        stroke: #981764;
+    }
+}
+
+component FileSelection {
+    in property<string> text-string;
+    HorizontalLayout {
+        spacing: 10px;
+
+        Text {
+        text: text-string;
+        color: white;
+        vertical-alignment: center;
+        }
+
+        path_edit:=LineEdit {}
+
+        Button {
+        text: "...";
+        }
+    }
 }
 
 export component App inherits Window {
+    //Rust accessible properties
+    in-out property<string> logs;
+
     title: @tr("gmod_3d_packager");
 
-    width: 1024px;
-    height: 768px;
+    min-width: 1024px;
+    min-height: 768px;
+    //max-width: 1024px;
+    //max-height: 768px;
 
     background: #1E1E1E;
 
+    property<length> HEADING_1 :28px;
+    property<length> HEADING_2 :16px;
+    property<length> HEADING_3 :13px;
+
+    Ropes{
+        width: parent.width;
+        height: parent.height;
+    }
+
     GridLayout {
-    spacing: 10px;
-    padding: 10px;
-        AppBox {
-        row: 0;
+        spacing: 10px;
+        padding: 10px;
+        AppBox { //Files selection
+            row: 0;
+            colspan: 4;
+            VerticalLayout {
+                padding: 10px;
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 10px;
+                height: 100%;
+
+                Text {
+                text: @tr("files_selec_box");
+                color: white;
+                font-size: HEADING_1;
+                }
+
+                models_selection:=FileSelection {
+                    text-string: @tr("text_models_selec");
+                }
+                materials_selection:= FileSelection {
+                    text-string: @tr("text_materials_selec");
+                }
+
+                qc_selection:=FileSelection {
+                    text-string: @tr("text_qc_file_selec");
+                }
+
+                HorizontalLayout {
+                    Text {
+                    text: @tr("text_batch");
+                    vertical-alignment: center;
+                    color: white;
+                    }
+
+                    batch_compilation := CheckBox {
+
+                    }
+                }
+
+                btn_compile:=Button {
+                text: @tr("btn_models_compile");
+                }
+            }
+        }
+
+        AppBox {//QC Infos
+            row: 1;
+            col: 0;
+            colspan: 2;
+            padding: 10px;
+            VerticalLayout {
+                padding: 10px;
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 10px;
+
+
+                Text {
+                text: @tr("text_qc_viewer");
+                color: white;
+                font-size: HEADING-2;
+                }
+
+                ScrollView {
+                    viewport-height: parent.height;
+                    qc_list:= ListView {
+
+                    }
+                }
+            }
+        }
+         AppBox {//Compilation options
+            row: 1;
+            col: 2;
+            colspan: 2;
+            VerticalLayout {
+                padding: 10px;
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 10px;
+                height: 100%;
+
+                Text {
+                text: @tr("text_compile_options");
+                color: white;
+                font-size: HEADING-2;
+                }
+            }
         }
 
         AppBox {
-        row: 3;
+            row: 4;
+            colspan: 4;
+            VerticalLayout {
+
+                padding: 10px;
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 10px;
+                height: 100%;
+
+                Text {
+                text: @tr("text_console_logs");
+                color: white;
+                font-size: HEADING-2;
+                }
+
+                Rectangle {
+                    background: #00000080;
+                    ScrollView {
+                        viewport-height: parent.height;
+                        console_logs := TextInput {
+                            input-type: text;
+                            color: white;
+                            read-only:true;
+                            single-line: false;
+                            wrap: word-wrap;
+                            text: logs;
+                        }
+                    }
+                }
+            }
         }
     }
 }
