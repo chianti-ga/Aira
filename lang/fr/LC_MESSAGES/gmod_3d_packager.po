@@ -1,0 +1,62 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: gmod_3d_packager\n"
+"POT-Creation-Date: 2023-08-09 00:11+0000\n"
+"PO-Revision-Date: 2023-08-09 02:15+0200\n"
+"Last-Translator:  <skitou@laptop-kk30urju.>\n"
+"Language-Team: French\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ui/main.slint:49
+msgctxt "App"
+msgid "gmod_3d_packager"
+msgstr "gmod_3d_packager"
+
+#: ui/main.slint:81
+msgctxt "App"
+msgid "files_selec_box"
+msgstr "Fichiers des modèles"
+
+#: ui/main.slint:87
+msgctxt "App"
+msgid "text_models_selec"
+msgstr "Fichiers des modèles 3D"
+
+#: ui/main.slint:90
+msgctxt "App"
+msgid "text_materials_selec"
+msgstr "Fichiers des matériaux 3D"
+
+#: ui/main.slint:94
+msgctxt "App"
+msgid "text_qc_file_selec"
+msgstr "Fichier QC"
+
+#: ui/main.slint:98
+msgctxt "App"
+msgid "text_batch"
+msgstr "Compilation multiple"
+
+#: ui/main.slint:108
+msgctxt "App"
+msgid "btn_models_compile"
+msgstr "Compiler"
+
+#: ui/main.slint:127
+msgctxt "App"
+msgid "text_qc_viewer"
+msgstr "Fichiers QC"
+
+#: ui/main.slint:154
+msgctxt "App"
+msgid "text_compile_options"
+msgstr "Options de compilation"
+
+#: ui/main.slint:175
+msgctxt "App"
+msgid "text_console_logs"
+msgstr "Console"
