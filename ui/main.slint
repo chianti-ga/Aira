@@ -1,4 +1,32 @@
-import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView} from "std-widgets.slint";
+import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView, TabWidget} from "std-widgets.slint";
+
+export global AppStyle {
+    out property<length> HEADING_1 :28px;
+    out property<length> HEADING_2 :16px;
+    out property<length> HEADING_3 :13px;
+}
+
+export global BtnLogic {
+    pure callback btn-gmod-bin-selection();
+    pure callback btn-models-selection();
+    pure callback btn-materials-selection();
+    pure callback btn-qc_selection();
+    pure callback btn-compile();
+}
+
+export global FilesPathsLogic {
+    in-out property<string> gmod_bin_path;
+    in-out property<string> models_path;
+    in-out property<string> materials_path;
+    in-out property<string> compilation_out_path;
+}
+
+
+export global TextLogic {
+    in-out property<string> logs;
+    in-out property<string> qc_file_viewer;
+    in-out property<string> gmod_bin_path_validation_text;
+}
 
 component AppBox inherits Rectangle {
     background: #10141D80;
@@ -9,6 +37,45 @@ component AppBox inherits Rectangle {
     /*drop-shadow-color: #981764;
     drop-shadow-blur: 5px;
     drop-shadow-offset-y: 5px;*/
+}
+component AppPage inherits GridLayout {
+    spacing: 10px;
+    padding: 10px;
+    @children
+    AppBox {
+        row: 4;
+        colspan: 4;
+        VerticalLayout {
+
+            padding: 10px;
+            padding-left: 20px;
+            padding-right: 20px;
+            spacing: 10px;
+            height: 100%;
+
+            Text {
+            text: @tr("text_console_logs");
+            color: white;
+            font-size: AppStyle.HEADING-2;
+            }
+
+            Rectangle {
+                background: #00000080;
+                ScrollView {
+                    viewport-height: parent.height;
+                    console_logs := TextInput {
+                        input-type: text;
+                        color: white;
+                        read-only:true;
+                        single-line: false;
+                        wrap: word-wrap;
+                        text: TextLogic.logs;
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 component Ropes inherits VerticalBox{
@@ -45,14 +112,6 @@ component FileSelection {
     }
 }
 
-export global BtnLogic {
-    pure callback btn-gmod-bin-selection();
-    pure callback btn-models-selection();
-    pure  callback btn-materials-selection();
-    pure  callback btn-qc_selection();
-    pure callback btn-compile();
-}
-
 export component App inherits Window {
     title: @tr("gmod_3d_packager");
 
@@ -63,149 +122,163 @@ export component App inherits Window {
 
     background: #1E1E1E;
 
-    property<length> HEADING_1 :28px;
-    property<length> HEADING_2 :16px;
-    property<length> HEADING_3 :13px;
-
     //Rust
-    in-out property<string> logs;
-    out property<bool> is_batch_compilation;
+
 
     Ropes{
         width: parent.width;
         height: parent.height;
     }
 
-    GridLayout {
-        spacing: 10px;
-        padding: 10px;
-        AppBox { //Files selection
-            row: 0;
-            colspan: 4;
-            VerticalLayout {
-                padding: 10px;
-                padding-left: 20px;
-                padding-right: 20px;
-                spacing: 10px;
-                height: 100%;
+    TabWidget {
+        Tab{
+            title: "Props Compile";
 
-                Text {
-                text: @tr("files_selec_box");
-                color: white;
-                font-size: HEADING_1;
-                }
+            AppPage {
+                AppBox { //Files selection
+                    row: 0;
+                    colspan: 4;
+                    VerticalLayout {
+                        padding: 10px;
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        spacing: 10px;
+                        height: 100%;
 
-                gmod_bin_selection:=FileSelection {
-                    text-string: @tr("text_gmod_bin_selec");
-                    clicked => {BtnLogic.btn-gmod-bin-selection()}
-                }
+                        Text {
+                        text: @tr("files_selec_box");
+                        color: white;
+                        font-size: AppStyle.HEADING_1;
+                        }
 
-                models_selection:=FileSelection {
-                    text-string: @tr("text_models_selec");
-                    clicked => {BtnLogic.btn-models-selection()}
-                }
-                materials_selection:= FileSelection {
-                    text-string: @tr("text_materials_selec");
-                    clicked => {BtnLogic.btn-materials-selection()}
-                }
+                        models_selection:=FileSelection {
+                            text-string: @tr("text_models_selec");
+                            lineEdit-string: FilesPathsLogic.models-path;
+                            clicked => {BtnLogic.btn-models-selection()}
+                        }
+                        materials_selection:= FileSelection {
+                            text-string: @tr("text_materials_selec");
+                            lineEdit-string: FilesPathsLogic.materials-path;
+                            clicked => {BtnLogic.btn-materials-selection()}
+                        }
 
-                qc_selection:=FileSelection {
-                    text-string: @tr("text_qc_file_selec");
-                    clicked => {BtnLogic.btn-qc-selection()}
-                }
+                        out_compile_selection:=FileSelection {
+                            text-string: @tr("text_out_selec");
+                            lineEdit-string: FilesPathsLogic.compilation-out-path;
+                            clicked => {BtnLogic.btn-qc-selection()}
+                        }
 
-                HorizontalLayout {
-                    Text {
-                    text: @tr("text_batch");
-                    vertical-alignment: center;
-                    color: white;
-                    }
-
-                    batch_compilation := CheckBox {
-                        toggled => {root.is_batch-compilation}
+                        btn_compile:=Button {
+                        text: @tr("btn_models_compile");
+                        clicked => {BtnLogic.btn-compile()}
+                        }
                     }
                 }
 
-                btn_compile:=Button {
-                text: @tr("btn_models_compile");
-                clicked => {BtnLogic.btn-compile()}
-                }
-            }
-        }
+                AppBox {//QC Infos
+                    row: 1;
+                    rowspan: 2;
+                    col: 0;
+                    colspan: 2;
+                    padding: 10px;
+                    VerticalLayout {
+                        padding: 10px;
+                        padding-bottom: 20px;
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        spacing: 10px;
 
-        AppBox {//QC Infos
-            row: 1;
-            col: 0;
-            colspan: 2;
-            padding: 10px;
-            VerticalLayout {
-                padding: 10px;
-                padding-left: 20px;
-                padding-right: 20px;
-                spacing: 10px;
+                        Text {
+                        text: @tr("text_qc_viewer");
+                        color: white;
+                        font-size: AppStyle.HEADING-2;
+                        }
 
-
-                Text {
-                text: @tr("text_qc_viewer");
-                color: white;
-                font-size: HEADING-2;
-                }
-
-                ScrollView {
-                    viewport-height: parent.height;
-                    qc_list:= ListView {
-                        
+                        Rectangle {
+                            background: #00000080;
+                            ScrollView {
+                                //viewport-height: parent.height;
+                                qc_info := TextInput {
+                                    input-type: text;
+                                    color: white;
+                                    read-only:true;
+                                    single-line: false;
+                                    wrap: word-wrap;
+                                    text: TextLogic.qc_file_viewer;
+                                }
+                            }
+                        }
                     }
                 }
+
+                /*AppBox {//Compilation options
+                    row: 1;
+                    rowspan: 2;
+                    col: 2;
+                    colspan: 2;
+                    VerticalLayout {
+                        padding: 10px;
+                        padding-bottom: 20px;
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        spacing: 10px;
+                        height: 100%;
+
+                        Text {
+                        text: @tr("text_compile_options");
+                        color: white;
+                        font-size: AppStyle.HEADING-2;
+                        }
+                    }
+                }*/
             }
         }
-         AppBox {//Compilation options
-            row: 1;
-            col: 2;
-            colspan: 2;
-            VerticalLayout {
-                padding: 10px;
-                padding-left: 20px;
-                padding-right: 20px;
-                spacing: 10px;
-                height: 100%;
+        Tab{
+        title: "PM Compile";
+            AppPage{
 
-                Text {
-                text: @tr("text_compile_options");
-                color: white;
-                font-size: HEADING-2;
-                }
+            }
+
+        }
+        Tab{
+        title: "SWEP Compile";
+            AppPage{
+
             }
         }
+        Tab{
+        title: "Addon Packager";
+            AppPage{
 
-        AppBox {
-            row: 4;
-            colspan: 4;
-            VerticalLayout {
-
-                padding: 10px;
-                padding-left: 20px;
-                padding-right: 20px;
-                spacing: 10px;
-                height: 100%;
-
-                Text {
-                text: @tr("text_console_logs");
-                color: white;
-                font-size: HEADING-2;
-                }
-
-                Rectangle {
-                    background: #00000080;
-                    ScrollView {
-                        viewport-height: parent.height;
-                        console_logs := TextInput {
-                            input-type: text;
+            }
+        }
+        Tab{
+        title: @tr("settings");
+            AppPage{
+                AppBox {
+                    row: 0;
+                    colspan: 4;
+                    VerticalLayout {
+                        padding: 10px;
+                        padding-bottom: 20px;
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        spacing: 10px;
+                        height: 100%;
+                        Text {
+                            text: @tr("text_qc_viewer");
                             color: white;
-                            read-only:true;
-                            single-line: false;
-                            wrap: word-wrap;
-                            text: logs;
+                            font-size: AppStyle.HEADING-2;
+                        }
+                        gmod_bin_selection:=FileSelection {
+                            text-string: @tr("text_gmod_bin_selec");
+                            lineEdit-string: FilesPathsLogic.gmod-bin-path;
+                            clicked => {BtnLogic.btn-gmod-bin-selection()}
+                        }
+                        Text {
+                            text: @tr("text_qc_viewer");
+                            color: white;
+                            font-size: AppStyle.HEADING-2;
                         }
                     }
                 }
