@@ -1,4 +1,4 @@
-import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView, TabWidget} from "std-widgets.slint";
+import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView, TabWidget, TextEdit} from "std-widgets.slint";
 
 export global AppStyle {
     out property<length> HEADING_1 :28px;
@@ -25,7 +25,7 @@ export global FilesPathsLogic {
 export global TextLogic {
     in-out property<string> logs;
     in-out property<string> qc_file_viewer;
-    in-out property<string> gmod_bin_path_validation_text;
+    in-out property<string> gmod_bin_verif_text;
 }
 
 component AppBox inherits Rectangle {
@@ -266,9 +266,9 @@ export component App inherits Window {
                         spacing: 10px;
                         height: 100%;
                         Text {
-                            text: @tr("text_qc_viewer");
+                            text: @tr("text_bin_settings");
                             color: white;
-                            font-size: AppStyle.HEADING-2;
+                            font-size: AppStyle.HEADING-1;
                         }
                         gmod_bin_selection:=FileSelection {
                             text-string: @tr("text_gmod_bin_selec");
@@ -276,9 +276,23 @@ export component App inherits Window {
                             clicked => {BtnLogic.btn-gmod-bin-selection()}
                         }
                         Text {
-                            text: @tr("text_qc_viewer");
+                            text: @tr("text_gmod_bin_verif");
                             color: white;
                             font-size: AppStyle.HEADING-2;
+                        }
+                        Rectangle {
+                            background: #00000080;
+                            ScrollView {
+                                //viewport-height: parent.height;
+                                bin_verif := TextInput {
+                                    input-type: text;
+                                    color: white;
+                                    read-only:true;
+                                    single-line: false;
+                                    wrap: word-wrap;
+                                    text: TextLogic.gmod_bin_verif_text;
+                                }
+                            }
                         }
                     }
                 }
