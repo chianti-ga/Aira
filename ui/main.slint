@@ -8,6 +8,7 @@ export global AppStyle {
 
 export global BtnLogic {
     pure callback btn-gmod-bin-selection();
+    pure callback btn-vtfedit-bin-selection();
     pure callback btn-models-selection();
     pure callback btn-materials-selection();
     pure callback btn-qc_selection();
@@ -16,6 +17,7 @@ export global BtnLogic {
 
 export global FilesPathsLogic {
     in-out property<string> gmod_bin_path;
+    in-out property<string> vtf_bin_path;
     in-out property<string> models_path;
     in-out property<string> materials_path;
     in-out property<string> compilation_out_path;
@@ -274,6 +276,11 @@ export component App inherits Window {
                             text-string: @tr("text_gmod_bin_selec");
                             lineEdit-string: FilesPathsLogic.gmod-bin-path;
                             clicked => {BtnLogic.btn-gmod-bin-selection()}
+                        }
+                         vtf_bin_selection:=FileSelection {
+                            text-string: @tr("text_vtfedit_bin_selec");
+                            lineEdit-string: FilesPathsLogic.vtf-bin-path;
+                            clicked => {BtnLogic.btn-vtfedit-bin-selection()}
                         }
                         Text {
                             text: @tr("text_gmod_bin_verif");
