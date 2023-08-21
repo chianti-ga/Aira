@@ -4,13 +4,14 @@ use rfd::FileDialog;
 use slint::SharedString;
 
 use crate::qc_utils::{create_qc_props, PropsData};
+use crate::tools_utils::{ToolsPaths, vtex_compile};
 
 mod tools_utils;
 mod qc_utils;
 
 slint::include_modules!();
 fn main() {
-    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    //log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     println!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
     slint::init_translations!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
 
@@ -64,6 +65,8 @@ fn set_props_page_callbacks(app: &App) {
             }
         }
     });
+
+    let app_weak: App = app.as_weak().clone().unwrap();
 
     btn_logic.on_btn_compile(move || {
         let qc_inf: PropsData = PropsData::default();
