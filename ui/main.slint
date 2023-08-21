@@ -8,10 +8,10 @@ export global AppStyle {
 
 export global BtnLogic {
     pure callback btn-gmod-bin-selection();
-    pure callback btn-vtfedit-bin-selection();
+    pure callback btn-vtex-bin-selection();
     pure callback btn-models-selection();
     pure callback btn-materials-selection();
-    pure callback btn-qc_selection();
+    pure callback btn-out-selection();
     pure callback btn-compile();
 }
 
@@ -167,7 +167,7 @@ export component App inherits Window {
                         out_compile_selection:=FileSelection {
                             text-string: @tr("text_out_selec");
                             lineEdit-string: FilesPathsLogic.compilation-out-path;
-                            clicked => {BtnLogic.btn-qc-selection()}
+                            clicked => {BtnLogic.btn-out-selection()}
                         }
 
                         btn_compile:=Button {
@@ -278,9 +278,9 @@ export component App inherits Window {
                             clicked => {BtnLogic.btn-gmod-bin-selection()}
                         }
                          vtf_bin_selection:=FileSelection {
-                            text-string: @tr("text_vtfedit_bin_selec");
+                            text-string: @tr("text_vtex_bin_selec");
                             lineEdit-string: FilesPathsLogic.vtf-bin-path;
-                            clicked => {BtnLogic.btn-vtfedit-bin-selection()}
+                            clicked => {BtnLogic.btn-vtex-bin-selection()}
                         }
                         Text {
                             text: @tr("text_gmod_bin_verif");
