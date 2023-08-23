@@ -1,14 +1,26 @@
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
+use lazy_static::lazy_static;
 use rfd::FileDialog;
 use slint::SharedString;
 
 use crate::qc_utils::{create_qc_props, PropsData};
+use crate::tools_utils::{ToolsPaths, vtex_compile};
 
 mod tools_utils;
 mod qc_utils;
 
 slint::include_modules!();
+
+lazy_static! {
+    static ref TOOLS_PATHS: Mutex<ToolsPaths> = Mutex::new(ToolsPaths {
+        vtex2: PathBuf::new(),
+        studio_mdl: PathBuf::new(),
+        gmad: PathBuf::new(),
+    });
+}
+
 fn main() {
     //log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     println!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
@@ -20,6 +32,7 @@ fn main() {
 
     set_props_page_callbacks(&app_window);
     set_settings_page_callbacks(&app_window);
+
 
     app_window.run().unwrap();
 }
@@ -65,9 +78,12 @@ fn set_props_page_callbacks(app: &App) {
         }
     });
 
+    let app_weak: App = app.as_weak().clone().unwrap();
+
     btn_logic.on_btn_compile(move || {
         let qc_inf: PropsData = PropsData::default();
         create_qc_props(qc_inf);
+        println!("{:?}", vtex_compile(Path::new(app_weak.global::<FilesPathsLogic>().get_materials_path().as_str()), TOOLS_PATHS.lock().unwrap()));
     });
 }
 
@@ -85,18 +101,29 @@ fn set_settings_page_callbacks(app: &App) {
                 app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(gmod_path.to_str().unwrap_or("INVALID")));
                 let mut verif_text: String = String::new();
 
-                let gmad_buff: PathBuf = gmod_path.join("gmad.exe"); //Borrower can suck my dick
+                let gmad_buff: PathBuf= gmod_path.join("gmad.exe"); //Borrower can suck my dick
                 let gmad_path: &Path = gmad_buff.as_path();
 
-                let studio_mdl_buff = gmod_path.join("studiomdl.exe"); //Borrower can suck my dick
-                let studio_mdl_path = studio_mdl_buff.as_path();
+                let studio_mdl_buff: PathBuf = gmod_path.join("studiomdl.exe"); //Borrower can suck my dick
+                let studio_mdl_path: &Path = studio_mdl_buff.as_path();
+
+                let mut tools_path = TOOLS_PATHS.lock().unwrap();
 
                 verif_text.push_str("GMAD: ");
-                verif_text.push_str(if gmad_path.exists() { "FOUND\n" } else { "NOT FOUND\n" });
+                if gmad_path.exists() {
+                    verif_text.push_str("FOUND\n");
+                    tools_path.gmad = gmad_buff;
+                } else {
+                    verif_text.push_str("NOT FOUND\n");
+                }
 
                 verif_text.push_str("STUDIOMDL: ");
-                verif_text.push_str(if studio_mdl_path.exists() { "FOUND\n" } else { "NOT FOUND\n" });
-
+                if studio_mdl_path.exists() {
+                    verif_text.push_str("FOUND\n");
+                    tools_path.studio_mdl = studio_mdl_buff;
+                } else {
+                    verif_text.push_str("NOT FOUND\n");
+                }
                 app_weak.global::<TextLogic>().set_gmod_bin_verif_text(SharedString::from(verif_text))
             }
             None => app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from("")),
@@ -110,20 +137,28 @@ fn set_settings_page_callbacks(app: &App) {
         match vtf_bin_dir {
             None => app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from("")),
             Some(vtf_buf) => {
-                let vtf_path: &Path = vtf_buf.as_path();
+                let vtf_path = vtf_buf.as_path();
 
                 app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from(vtf_path.to_str().unwrap_or("INVALID")));
 
                 let mut verif_text: SharedString = app_weak.global::<TextLogic>().get_gmod_bin_verif_text();
 
-                let vtf_buff: PathBuf = vtf_path.join("vtex.exe"); //Borrower can suck my dick
-                let vtf_path: &Path = vtf_buff.as_path();
+                let vtf_buff: PathBuf = vtf_path.join("vtex2.exe");
+                let mut tools_path = TOOLS_PATHS.lock().unwrap();
 
-                verif_text.push_str("VTEX: ");
-                verif_text.push_str(if vtf_path.exists() { "FOUND\n" } else { "NOT FOUND\n" });
+                verif_text.push_str("VTEX2: ");
+                if vtf_buff.exists() {
+                    verif_text.push_str("FOUND\n");
+                    tools_path.vtex2 = vtf_buff;
+                } else {
+                    verif_text.push_str("NOT FOUND\n");
+                }
 
                 app_weak.global::<TextLogic>().set_gmod_bin_verif_text(verif_text)
             }
         }
     });
+
+
 }
+
