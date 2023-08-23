@@ -5,23 +5,23 @@ use lazy_static::lazy_static;
 use rfd::FileDialog;
 use slint::SharedString;
 
+use crate::config::{load_from_config, save_to_config};
 use crate::qc_utils::{create_qc_props, PropsData};
 use crate::tools_utils::{ToolsPaths, vtex_compile};
 
 mod tools_utils;
 mod qc_utils;
+mod config;
 
 slint::include_modules!();
 
 lazy_static! {
-    static ref TOOLS_PATHS: Mutex<ToolsPaths> = Mutex::new(ToolsPaths {
-        vtex2: PathBuf::new(),
-        studio_mdl: PathBuf::new(),
-        gmad: PathBuf::new(),
-    });
+    static ref CONFIG_FILE:PathBuf = PathBuf::from("config.toml");
+    static ref TOOLS_PATHS: Mutex<ToolsPaths> = Mutex::new(load_from_config());
 }
 
 fn main() {
+
     //log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     println!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
     slint::init_translations!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
@@ -33,8 +33,14 @@ fn main() {
     set_props_page_callbacks(&app_window);
     set_settings_page_callbacks(&app_window);
 
-
     app_window.run().unwrap();
+}
+
+fn update_path_ui(app: &App){
+    let app_weak: App = app.as_weak().clone().unwrap();
+    let mut tools_path = TOOLS_PATHS.lock().unwrap();
+    app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(tools_path.gmad.parent().unwrap().to_str().unwrap()));
+    app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from(tools_path.vtex2.parent().unwrap().to_str().unwrap()));
 }
 
 fn set_props_page_callbacks(app: &App) {
@@ -95,13 +101,14 @@ fn set_settings_page_callbacks(app: &App) {
     btn_logic.on_btn_gmod_bin_selection(move || {
         let gmod_bin_dir: Option<PathBuf> = FileDialog::new().pick_folder();
         match gmod_bin_dir {
+            None => app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from("")),
             Some(gmod_buf) => {
                 let gmod_path: &Path = gmod_buf.as_path();
 
                 app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(gmod_path.to_str().unwrap_or("INVALID")));
                 let mut verif_text: String = String::new();
 
-                let gmad_buff: PathBuf= gmod_path.join("gmad.exe"); //Borrower can suck my dick
+                let gmad_buff: PathBuf = gmod_path.join("gmad.exe"); //Borrower can suck my dick
                 let gmad_path: &Path = gmad_buff.as_path();
 
                 let studio_mdl_buff: PathBuf = gmod_path.join("studiomdl.exe"); //Borrower can suck my dick
@@ -124,9 +131,10 @@ fn set_settings_page_callbacks(app: &App) {
                 } else {
                     verif_text.push_str("NOT FOUND\n");
                 }
-                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(SharedString::from(verif_text))
+                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(SharedString::from(verif_text));
+
+                save_to_config(&tools_path);
             }
-            None => app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from("")),
         }
     });
 
@@ -153,12 +161,9 @@ fn set_settings_page_callbacks(app: &App) {
                 } else {
                     verif_text.push_str("NOT FOUND\n");
                 }
-
-                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(verif_text)
+                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(verif_text);
+                save_to_config(&tools_path);
             }
         }
     });
-
-
 }
-
