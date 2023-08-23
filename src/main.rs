@@ -29,7 +29,7 @@ fn main() {
     let app_window: App = App::new().unwrap();
     //let app_window_weak:Weak<App> = app_window.as_weak();
     app_window.global::<TextLogic>().set_logs(slint::SharedString::from("TEST LOGS:\n"));
-
+    update_path_ui(&app_window);
     set_props_page_callbacks(&app_window);
     set_settings_page_callbacks(&app_window);
 
@@ -39,9 +39,36 @@ fn main() {
 fn update_path_ui(app: &App){
     let app_weak: App = app.as_weak().clone().unwrap();
     let mut tools_path = TOOLS_PATHS.lock().unwrap();
+
     app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(tools_path.gmad.parent().unwrap().to_str().unwrap()));
     app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from(tools_path.vtex2.parent().unwrap().to_str().unwrap()));
+
+    let mut verif_text: String = String::new();
+
+    verif_text.push_str("GMAD: ");
+    if tools_path.gmad.exists() {
+        verif_text.push_str("FOUND\n");
+    } else {
+        verif_text.push_str("NOT FOUND\n");
+    }
+
+    verif_text.push_str("STUDIOMDL: ");
+    if tools_path.studio_mdl.exists() {
+        verif_text.push_str("FOUND\n");
+    } else {
+        verif_text.push_str("NOT FOUND\n");
+    }
+
+    verif_text.push_str("VTEX2: ");
+    if tools_path.vtex2.exists() {
+        verif_text.push_str("FOUND\n");
+    } else {
+        verif_text.push_str("NOT FOUND\n");
+    }
+
+    app_weak.global::<TextLogic>().set_gmod_bin_verif_text(SharedString::from(verif_text));
 }
+
 
 fn set_props_page_callbacks(app: &App) {
     let app_weak: App = app.as_weak().clone().unwrap();
@@ -106,7 +133,7 @@ fn set_settings_page_callbacks(app: &App) {
                 let gmod_path: &Path = gmod_buf.as_path();
 
                 app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(gmod_path.to_str().unwrap_or("INVALID")));
-                let mut verif_text: String = String::new();
+                let mut verif_text: SharedString = app_weak.global::<TextLogic>().get_gmod_bin_verif_text();
 
                 let gmad_buff: PathBuf = gmod_path.join("gmad.exe"); //Borrower can suck my dick
                 let gmad_path: &Path = gmad_buff.as_path();
@@ -131,7 +158,7 @@ fn set_settings_page_callbacks(app: &App) {
                 } else {
                     verif_text.push_str("NOT FOUND\n");
                 }
-                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(SharedString::from(verif_text));
+                app_weak.global::<TextLogic>().set_gmod_bin_verif_text(verif_text);
 
                 save_to_config(&tools_path);
             }

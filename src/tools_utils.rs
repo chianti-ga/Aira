@@ -1,11 +1,12 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::MutexGuard;
 
+use serde::{Deserialize, Serialize};
+
 use crate::App;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ToolsPaths {
     pub vtex2: PathBuf,
     pub studio_mdl: PathBuf,
@@ -18,7 +19,7 @@ pub fn vtex_compile(materials_path: &Path, tools_paths: MutexGuard<ToolsPaths>) 
     let gmd: &Path = tools_paths.studio_mdl.as_path();
 
     let mut vtex_cmd: Command = Command::new(vtex);
-    vtex_cmd.args(["convert", "--gamma-correct", "--srgb", "--trilinear",  "-f dxt5", "-r", materials_path.to_str().unwrap()]);
+    vtex_cmd.args(["convert", "-c", "9", "-f", "dxt5", "-r", materials_path.to_str().unwrap()]);
 
     vtex_cmd.current_dir(materials_path);
     println!("{:?}", vtex_cmd.get_args());
