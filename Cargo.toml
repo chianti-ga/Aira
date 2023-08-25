@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 log4rs = { version = "1.2.0", default-features = true }
 rfd = { version = "0.11.4", default-features = false, features = ["gtk3"] }
-slint = { version = "1.1.1", default-features = true, features = ["gettext", "backend-qt"] }
+slint = { version = "1.1.1", default-features = true, features = ["log", "gettext", "backend-qt"] }
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.7.6"
