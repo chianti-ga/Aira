@@ -12,6 +12,9 @@ slint = { version = "1.1.1", default-features = true, features = ["log", "gettex
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.7.6"
+walkdir = "2.3.3"
+regex = "1.9.3"
+rayon = "1.7.0"
 
 
 [build-dependencies]
