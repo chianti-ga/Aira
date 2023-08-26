@@ -96,7 +96,6 @@ fn set_props_page_callbacks(app: &App) {
             }
         });
     });
-
 }
 
 fn set_settings_page_callbacks(app: &App) {
