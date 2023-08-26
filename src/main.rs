@@ -86,47 +86,17 @@ fn set_props_page_callbacks(app: &App) {
     });
 
     let app_weak: Weak<App> = app.as_weak().clone();
-
     btn_logic.on_btn_compile(move || {
         thread::spawn({
             let app_weak: Weak<App> = app_weak.clone();
             move || {
                 app_weak.upgrade_in_event_loop(move |app| {
-                    let vtex_out = vtex_compile(Path::new(app.global::<FilesPathsLogic>().get_materials_path().as_str()), TOOLS_PATHS.lock().unwrap());
-
-                    for line in vtex_out.0.lines() {
-                        let mut logs = app.global::<TextLogic>().get_logs();
-                        match line {
-                            Ok(line) => {
-                                logs.push_str(line.as_str());
-                                logs.push_str("\n");
-                                app.global::<TextLogic>().set_logs(logs);
-                            }
-                            Err(_) => {
-                                logs.push_str("Error, can't retrieve child's output.\n");
-                                app.global::<TextLogic>().set_logs(logs);
-                            }
-                        }
-                    }
-
-                    for line in vtex_out.1.lines() {
-                        let mut logs = app.global::<TextLogic>().get_logs();
-                        match line {
-                            Ok(line) => {
-                                logs.push_str(line.as_str());
-                                logs.push_str("\n");
-                                app.global::<TextLogic>().set_logs(logs);
-                            }
-                            Err(_) => {
-                                logs.push_str("Error, can't retrieve child's output.\n");
-                                app.global::<TextLogic>().set_logs(logs);
-                            }
-                        }
-                    }
+                    vtex_compile(Path::new(app.global::<FilesPathsLogic>().get_compilation_out_path().as_str()), Path::new(app.global::<FilesPathsLogic>().get_materials_path().as_str()), TOOLS_PATHS.lock().unwrap());
                 }).expect("TODO: panic message");
             }
         });
     });
+
 }
 
 fn set_settings_page_callbacks(app: &App) {
