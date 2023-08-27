@@ -13,6 +13,8 @@ export global BtnLogic {
     pure callback btn-materials-selection();
     pure callback btn-out-selection();
     pure callback btn-compile();
+
+    in-out property<bool> is-enabled:true;
 }
 
 export global FilesPathsLogic {
@@ -105,11 +107,13 @@ component FileSelection {
 
         path_edit:=LineEdit {
         text: lineEdit-string;
+        read-only: true;
         }
 
         btn_selec:=Button {
         text: "...";
         clicked => {clicked()}
+        enabled: BtnLogic.is-enabled;
         }
     }
 }
@@ -170,9 +174,10 @@ export component App inherits Window {
                             clicked => {BtnLogic.btn-out-selection()}
                         }
 
-                        btn_compile:=Button {
+                       btn_compile:=Button {
                         text: @tr("btn_models_compile");
                         clicked => {BtnLogic.btn-compile()}
+                        enabled: BtnLogic.is-enabled;
                         }
                     }
                 }
