@@ -1,19 +1,28 @@
-use std::io::BufRead;
+extern crate core;
+
+use std::io::Write;
+use std::ops::Add;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use lazy_static::lazy_static;
+use log::{debug, info, LevelFilter};
+use log4rs::append::Append;
+use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
+use log4rs::Config;
+use log4rs::config::{Appender, Root};
+use log4rs::encode::pattern::PatternEncoder;
 use rfd::FileDialog;
 use slint::{SharedString, Weak};
 
 use crate::config::{load_from_config, save_to_config};
-use crate::tools_utils::{ToolsPaths, vtex_compile};
+use crate::tools_utils::{ToolsPaths, vmt_generate, vtex_compile};
 
 mod tools_utils;
 mod qc_utils;
 mod config;
-
 slint::include_modules!();
 
 static ERROR_THREAD: &str = "ERROR IN UI THREAD.";
@@ -24,14 +33,27 @@ lazy_static! {
 }
 
 fn main() {
+    let log_stdout = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
+        .build();
 
-    //log4rs::init_file("log4rs.yml", Default::default()).unwrap();
-    println!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
+    let log_file_appender = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
+        .build("logs.txt")
+        .unwrap();
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("stdout", Box::new(log_stdout)))
+        .appender(Appender::builder().build("logs_file", Box::new(log_file_appender)))
+        .build(Root::builder().appender("stdout").build(LevelFilter::max()))
+        .unwrap();
+
+    let handle_log = log4rs::init_config(config).unwrap();
+
     slint::init_translations!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
 
+    info!("Init app window");
     let app_window: App = App::new().unwrap();
-    //let app_window_weak:Weak<App> = app_window.as_weak();
-    app_window.global::<TextLogic>().set_logs(slint::SharedString::from("TEST LOGS:\n"));
     update_path_ui(&app_window);
     set_props_page_callbacks(&app_window);
     set_settings_page_callbacks(&app_window);
@@ -45,7 +67,7 @@ fn set_props_page_callbacks(app: &App) {
 
     btn_logic.on_btn_models_selection(move || {
         app_weak.upgrade_in_event_loop(move |app| {
-            let models_dir: Option<PathBuf> = FileDialog::new().pick_folder();
+            let models_dir: Option<PathBuf> = FileDialog::new().add_filter("*", &["smd"]).pick_file();
             match models_dir {
                 None => app.global::<FilesPathsLogic>().set_models_path(SharedString::from("")),
                 Some(models_buff) => {
@@ -86,12 +108,16 @@ fn set_props_page_callbacks(app: &App) {
     });
 
     let app_weak: Weak<App> = app.as_weak().clone();
+
     btn_logic.on_btn_compile(move || {
         thread::spawn({
             let app_weak: Weak<App> = app_weak.clone();
             move || {
                 app_weak.upgrade_in_event_loop(move |app| {
+                    app.global::<BtnLogic>().set_is_enabled(false);
                     vtex_compile(Path::new(app.global::<FilesPathsLogic>().get_compilation_out_path().as_str()), Path::new(app.global::<FilesPathsLogic>().get_materials_path().as_str()), TOOLS_PATHS.lock().unwrap());
+                    app.global::<BtnLogic>().set_is_enabled(true);
+                    vmt_generate(Path::new(app.global::<FilesPathsLogic>().get_compilation_out_path().as_str()));
                 }).expect("TODO: panic message");
             }
         });
@@ -119,7 +145,7 @@ fn set_settings_page_callbacks(app: &App) {
                 let studio_mdl_buff: PathBuf = gmod_path.join("studiomdl.exe"); //Borrower can suck my dick
                 let studio_mdl_path: &Path = studio_mdl_buff.as_path();
 
-                let mut tools_path = TOOLS_PATHS.lock().unwrap();
+                let mut tools_path: MutexGuard<ToolsPaths> = TOOLS_PATHS.lock().unwrap();
 
                 verif_text.push_str("GMAD: ");
                 if gmad_path.exists() {
