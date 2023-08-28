@@ -7,7 +7,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use lazy_static::lazy_static;
-use log::{debug, info, LevelFilter};
+use log::{info, LevelFilter};
 use log4rs::append::Append;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
@@ -54,6 +54,7 @@ fn main() {
 
     info!("Init app window");
     let app_window: App = App::new().unwrap();
+
     update_path_ui(&app_window);
     set_props_page_callbacks(&app_window);
     set_settings_page_callbacks(&app_window);
@@ -202,6 +203,10 @@ fn set_settings_page_callbacks(app: &App) {
 fn update_path_ui(app: &App) {
     let app_weak: App = app.as_weak().clone().unwrap();
     let mut tools_path = TOOLS_PATHS.lock().unwrap();
+
+    if tools_path.vtex2.to_str().unwrap() == "" || tools_path.gmad.to_str().unwrap() == "" || tools_path.studio_mdl.to_str().unwrap() == "" {
+        return;
+    }
 
     app_weak.global::<FilesPathsLogic>().set_gmod_bin_path(SharedString::from(tools_path.gmad.parent().unwrap().to_str().unwrap()));
     app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from(tools_path.vtex2.parent().unwrap().to_str().unwrap()));

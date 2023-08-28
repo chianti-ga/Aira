@@ -17,6 +17,14 @@ export global BtnLogic {
     in-out property<bool> is-enabled:true;
 }
 
+export global CompileLogic {
+    in-out property<string> mass;
+    in-out property<string> surfaceprop;
+    in-out property<string> contents;
+    in-out property<string> cbox;
+    in-out property<bool> is-enabled:true;
+}
+
 export global FilesPathsLogic {
     in-out property<string> gmod_bin_path;
     in-out property<string> vtf_bin_path;
@@ -120,6 +128,7 @@ component FileSelection {
 
 export component App inherits Window {
     title: @tr("gmod_3d_packager");
+    icon: @image-url("logo.png");
 
     min-width: 1024px;
     min-height: 768px;
@@ -176,8 +185,10 @@ export component App inherits Window {
 
                        btn_compile:=Button {
                         text: @tr("btn_models_compile");
-                        clicked => {BtnLogic.btn-compile()}
+                        clicked => {BtnLogic.btn-compile();}
                         enabled: BtnLogic.is-enabled;
+
+
                         }
                     }
                 }
@@ -218,7 +229,7 @@ export component App inherits Window {
                     }
                 }
 
-                /*AppBox {//Compilation options
+                AppBox {//Compilation options
                     row: 1;
                     rowspan: 2;
                     col: 2;
@@ -236,8 +247,39 @@ export component App inherits Window {
                         color: white;
                         font-size: AppStyle.HEADING-2;
                         }
+
+                        CheckBox {
+                            text: "Default";
+                            toggled => {
+                                if (CompileLogic.is-enabled) {
+                                    CompileLogic.is-enabled=false;
+                                } else {CompileLogic.is-enabled=true;}
+                            }
+                        }
+                        LineEdit {
+                            placeholder-text: "mass in KG";
+                            read-only: !CompileLogic.is-enabled;
+                            text: CompileLogic.mass;
+                        }
+                        LineEdit {
+                            placeholder-text: "surfaceprop";
+                            read-only: !CompileLogic.is-enabled;
+                            text: CompileLogic.surfaceprop;
+                        }
+                        LineEdit {
+                            placeholder-text: "contents";
+                            read-only: !CompileLogic.is-enabled;
+                            text: CompileLogic.contents;
+                        }
+
+                        LineEdit {
+                            placeholder-text: "cbox";
+                            read-only: !CompileLogic.is-enabled;
+                            text: CompileLogic.cbox;
+                        }
+
                     }
-                }*/
+                }
             }
         }
         Tab{
