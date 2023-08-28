@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 const CBOX_DEFAULT: [f32; 6] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
@@ -8,7 +8,7 @@ pub struct PropsData {
     pub surfaceprop: String,
     pub contents: String,
     pub cdmaterials: String,
-    pub texturegroup:Vec<String>,
+    pub texturegroup: Vec<String>,
     pub cbox: [f32; 6],
     pub collisionmodel: CollisionModel,
 }
@@ -29,7 +29,7 @@ impl Default for PropsData {
             cdmaterials: "".to_string(),
             texturegroup: Vec::new(),
             cbox: CBOX_DEFAULT,
-            collisionmodel: CollisionModel{
+            collisionmodel: CollisionModel {
                 automass: true,
                 mass: 0.0,
                 concave: true,
@@ -51,28 +51,28 @@ impl Display for PropsData {
         write!(f, "\"$texturegroup\" \"skins\"\n{{")?;
 
         self.texturegroup.iter().for_each(|texture| {
-           write!(f, " {{ {} }}", texture).unwrap();
+            write!(f, " {{ {} }}", texture).unwrap();
         });
         writeln!(f, "}}")?;
         write!(f, "\"cbox\"")?;
         self.cbox.iter().for_each(|coord| {
-             write!(f, " {} ", coord).unwrap()
+            write!(f, " {} ", coord).unwrap()
         });
-        write!(f, "\n").unwrap()
+        writeln!(f, "{}", self.collisionmodel)
     }
 }
 
-impl Display for CollisionModel{
+impl Display for CollisionModel {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"$collisionmodel\" {{\n ")?;
         if self.automass {
             writeln!(f, "\"$automass\"")?;
-        }else {
+        } else {
             writeln!(f, "\"{}\"", self.mass)?;
         }
         if self.concave {
             writeln!(f, "\"$concave\"")?;
         }
-        write!(f,"}}")
+        write!(f, "}}")
     }
 }
