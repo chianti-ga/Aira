@@ -1,7 +1,7 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::fs::{copy, create_dir_all, File, remove_dir_all, remove_file};
 use std::io::Write;
+use std::ops::Add;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Mutex, MutexGuard};
@@ -13,10 +13,10 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use rfd::{MessageDialog, MessageLevel};
 use serde::{Deserialize, Serialize};
-use slint::ComponentHandle;
+use slint::{ComponentHandle, Weak};
 use walkdir::WalkDir;
 
-use crate::App;
+use crate::{App, ERROR_THREAD, TextLogic};
 
 lazy_static! {
     static ref BASE_NAMES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
@@ -30,7 +30,7 @@ pub struct ToolsPaths {
 }
 
 // https://github.com/StrataSource/vtex2/
-pub fn vtex_compile(out_path: &Path, materials_path: &Path, tools_paths: MutexGuard<ToolsPaths>) {
+pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path, tools_paths: MutexGuard<ToolsPaths>) {
     let vtex: &Path = tools_paths.vtex2.as_path();
     let materials_out = out_path.join("materials/");
     match remove_dir_all(materials_out.clone()) {
@@ -40,7 +40,7 @@ pub fn vtex_compile(out_path: &Path, materials_path: &Path, tools_paths: MutexGu
             MessageDialog::new()
                 .set_title("Error")
                 .set_level(MessageLevel::Error)
-                .set_description(&format!("Cannot clear output folder before compilation :, {}", err.description()))
+                .set_description(&format!("Cannot clear output folder before compilation :, {}", err.to_string()))
                 .show();
         }
     };
@@ -53,7 +53,7 @@ pub fn vtex_compile(out_path: &Path, materials_path: &Path, tools_paths: MutexGu
             MessageDialog::new()
                 .set_title("Error")
                 .set_level(MessageLevel::Error)
-                .set_description(&format!("Cannot create output folder :, {}", err.description()))
+                .set_description(&format!("Cannot create output folder :, {}", err.to_string()))
                 .show();
         }
     }
@@ -75,12 +75,9 @@ pub fn vtex_compile(out_path: &Path, materials_path: &Path, tools_paths: MutexGu
         textures_files.par_iter().for_each(|file| {
             let mut vtex_cmd: Command = Command::new(vtex);
             vtex_cmd.args(["convert", "-c", "9", "-f", "dxt5", file.as_str()])
-                .current_dir(&materials_out)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit());
+                .current_dir(&materials_out);
 
             let mut vtex_cmd_child: Child = vtex_cmd.spawn().unwrap();
-            vtex_cmd_child.wait().unwrap();
         });
     });
 
@@ -92,14 +89,18 @@ pub fn vtex_compile(out_path: &Path, materials_path: &Path, tools_paths: MutexGu
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot delete file :, {}", err.description()))
+                    .set_description(&format!("Cannot delete file :, {}", err.to_string()))
                     .show();
             }
         }
     });
+
+
+
+
 }
 
-pub fn vmt_generate(out_path: &Path) {
+pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
     let materials_out = out_path.join("materials/");
 
     let base_names = BASE_NAMES.lock().unwrap();
@@ -118,8 +119,8 @@ pub fn vmt_generate(out_path: &Path) {
         let mut vmt_string: String = String::from("\"VertexlitGeneric\"\n");
         vmt_string.push_str("{\n");
         vmt_string.push_str(format!("\"$basetexture\" \"{}\"\n", base_color).as_str());
-        vmt_string.push_str(format!("\"$normalmap\" \"{}\"\n", base_color).as_str());
-        vmt_string.push_str(format!("\"$envmap\" \"{}\"\n", base_color).as_str());
+        vmt_string.push_str(format!("\"$normalmap\" \"{}\"\n", normal_map).as_str());
+        vmt_string.push_str(format!("\"$envmap\" \"{}\"\n", env_map).as_str());
         vmt_string.push_str("\"$nolod\" \"1\"\n");
         vmt_string.push_str("\"$translucent\" \"1\"\n");
         vmt_string.push('}');
@@ -134,20 +135,20 @@ pub fn vmt_generate(out_path: &Path) {
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot create vmt file :, {}", err.description()))
+                    .set_description(&format!("Cannot create vmt file :, {}", err.to_string()))
                     .show();
                 return;
             }
         };
 
         match file.write_all(vmt_string.as_bytes()) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(err) => {
                 error!("{:?}", err);
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot write to vmt file :, {}", err.description()))
+                    .set_description(&format!("Cannot write to vmt file :, {}", err.to_string()))
                     .show();
             }
         }

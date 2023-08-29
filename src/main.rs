@@ -1,14 +1,11 @@
 extern crate core;
 
-use std::io::Write;
-use std::ops::Add;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
-use std::thread;
+use std::sync::{mpsc, Mutex, MutexGuard};
+use std::sync::mpsc::Sender;
 
 use lazy_static::lazy_static;
 use log::{info, LevelFilter};
-use log4rs::append::Append;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::Config;
@@ -17,12 +14,14 @@ use log4rs::encode::pattern::PatternEncoder;
 use rfd::FileDialog;
 use slint::{SharedString, Weak};
 
+use crate::compile_logic::{CompileLogicMessage, init_thread};
 use crate::config::{load_from_config, save_to_config};
-use crate::tools_utils::{ToolsPaths, vmt_generate, vtex_compile};
+use crate::tools_utils::ToolsPaths;
 
 mod tools_utils;
 mod qc_utils;
 mod config;
+mod compile_logic;
 slint::include_modules!();
 
 static ERROR_THREAD: &str = "ERROR IN UI THREAD.";
@@ -55,14 +54,17 @@ fn main() {
     info!("Init app window");
     let app_window: App = App::new().unwrap();
 
+    let (tx, rx) = mpsc::channel();
+    init_thread(rx);
+
     update_path_ui(&app_window);
-    set_props_page_callbacks(&app_window);
+    set_props_page_callbacks(&app_window, tx);
     set_settings_page_callbacks(&app_window);
 
     app_window.run().unwrap();
 }
 
-fn set_props_page_callbacks(app: &App) {
+fn set_props_page_callbacks(app: &App, tx: Sender<CompileLogicMessage>) {
     let app_weak: Weak<App> = app.as_weak().clone();
     let btn_logic: BtnLogic = app.global::<BtnLogic>();
 
@@ -72,7 +74,7 @@ fn set_props_page_callbacks(app: &App) {
             match models_dir {
                 None => app.global::<FilesPathsLogic>().set_models_path(SharedString::from("")),
                 Some(models_buff) => {
-                    let models_path = models_buff.as_path();
+                    let models_path: &Path = models_buff.as_path();
                     app.global::<FilesPathsLogic>().set_models_path(SharedString::from(models_path.to_str().unwrap_or("INVALID")));
                 }
             }
@@ -86,7 +88,7 @@ fn set_props_page_callbacks(app: &App) {
             match materials_dir {
                 None => app.global::<FilesPathsLogic>().set_materials_path(SharedString::from("")),
                 Some(materials_buff) => {
-                    let materials_path = materials_buff.as_path();
+                    let materials_path: &Path = materials_buff.as_path();
                     app.global::<FilesPathsLogic>().set_materials_path(SharedString::from(materials_path.to_str().unwrap_or("INVALID")));
                 }
             }
@@ -101,7 +103,7 @@ fn set_props_page_callbacks(app: &App) {
             match out_dir {
                 None => app.global::<FilesPathsLogic>().set_compilation_out_path(SharedString::from("")),
                 Some(out_buff) => {
-                    let out_path = out_buff.as_path();
+                    let out_path: &Path = out_buff.as_path();
                     app.global::<FilesPathsLogic>().set_compilation_out_path(SharedString::from(out_path.to_str().unwrap_or("INVALID")));
                 }
             }
@@ -109,25 +111,17 @@ fn set_props_page_callbacks(app: &App) {
     });
 
     let app_weak: Weak<App> = app.as_weak().clone();
-
     btn_logic.on_btn_compile(move || {
-        thread::spawn({
-            let app_weak: Weak<App> = app_weak.clone();
-            move || {
-                app_weak.upgrade_in_event_loop(move |app| {
-                    app.global::<BtnLogic>().set_is_enabled(false);
-                    vtex_compile(Path::new(app.global::<FilesPathsLogic>().get_compilation_out_path().as_str()), Path::new(app.global::<FilesPathsLogic>().get_materials_path().as_str()), TOOLS_PATHS.lock().unwrap());
-                    app.global::<BtnLogic>().set_is_enabled(true);
-                    vmt_generate(Path::new(app.global::<FilesPathsLogic>().get_compilation_out_path().as_str()));
-                }).expect("TODO: panic message");
-            }
-        });
+        tx.send(CompileLogicMessage::Texture {
+            app_weak: app_weak.clone(),
+            materials_path: app_weak.unwrap().global::<FilesPathsLogic>().get_materials_path().clone(),
+            compilation_out_path: app_weak.unwrap().global::<FilesPathsLogic>().get_compilation_out_path().clone(),
+        }).expect(ERROR_THREAD);
     });
 }
 
 fn set_settings_page_callbacks(app: &App) {
     let app_weak: App = app.as_weak().clone().unwrap();
-
     let btn_logic: BtnLogic = app.global::<BtnLogic>();
 
     btn_logic.on_btn_gmod_bin_selection(move || {
@@ -184,7 +178,7 @@ fn set_settings_page_callbacks(app: &App) {
                 let mut verif_text: SharedString = app_weak.global::<TextLogic>().get_gmod_bin_verif_text();
 
                 let vtf_buff: PathBuf = vtf_path.join("vtex2.exe");
-                let mut tools_path = TOOLS_PATHS.lock().unwrap();
+                let mut tools_path: MutexGuard<ToolsPaths> = TOOLS_PATHS.lock().unwrap();
 
                 verif_text.push_str("VTEX2: ");
                 if vtf_buff.exists() {
@@ -202,7 +196,7 @@ fn set_settings_page_callbacks(app: &App) {
 
 fn update_path_ui(app: &App) {
     let app_weak: App = app.as_weak().clone().unwrap();
-    let mut tools_path = TOOLS_PATHS.lock().unwrap();
+    let tools_path: MutexGuard<ToolsPaths> = TOOLS_PATHS.lock().unwrap();
 
     if tools_path.vtex2.to_str().unwrap() == "" || tools_path.gmad.to_str().unwrap() == "" || tools_path.studio_mdl.to_str().unwrap() == "" {
         return;
