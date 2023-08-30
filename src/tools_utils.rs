@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 use std::fs::{copy, create_dir_all, File, remove_dir_all, remove_file};
 use std::io::Write;
-use std::ops::Add;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command};
 use std::sync::{Mutex, MutexGuard};
 
 use lazy_static::lazy_static;
@@ -16,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use slint::{ComponentHandle, Weak};
 use walkdir::WalkDir;
 
-use crate::{App, ERROR_THREAD, TextLogic};
+use crate::App;
 
 lazy_static! {
     static ref BASE_NAMES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
@@ -94,10 +93,6 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             }
         }
     });
-
-
-
-
 }
 
 pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
