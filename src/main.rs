@@ -19,7 +19,7 @@ use crate::config::{load_from_config, save_to_config};
 use crate::tools_utils::ToolsPaths;
 
 mod tools_utils;
-mod qc_utils;
+mod qc;
 mod config;
 mod compile_logic;
 slint::include_modules!();
