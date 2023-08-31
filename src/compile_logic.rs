@@ -20,7 +20,7 @@ pub enum CompileLogicMessage {
     // You can add more variants here for different message types.
 }
 
-pub fn init_thread(rx: Receiver<CompileLogicMessage>) {
+pub fn init_logic_thread(rx: Receiver<CompileLogicMessage>) {
     thread::spawn(move || {
         loop {
             match rx.recv() {

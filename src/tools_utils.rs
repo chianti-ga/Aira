@@ -4,9 +4,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{mpsc, Mutex, MutexGuard};
+use std::thread;
 
 use lazy_static::lazy_static;
-use log::{debug, error};
+use log::{debug, error, info};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
@@ -45,7 +46,7 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             MessageDialog::new()
                 .set_title("Error")
                 .set_level(MessageLevel::Error)
-                .set_description(&format!("Cannot clear output folder before compilation :, {}", err.to_string()))
+                .set_description(&format!("Cannot clear output folder before compilation :, {}", err))
                 .show();
         }
     };
@@ -64,7 +65,7 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             MessageDialog::new()
                 .set_title("Error")
                 .set_level(MessageLevel::Error)
-                .set_description(&format!("Cannot create output folder :, {}", err.to_string()))
+                .set_description(&format!("Cannot create output folder :, {}", err))
                 .show();
         }
     }
@@ -98,6 +99,14 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
     });
 
     let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        for x in rx {
+            app_weak.upgrade_in_event_loop(move |app| {
+        let logs = app.global::<TextLogic>().get_logs();
+        app.global::<TextLogic>().set_logs(logs);
+    }).unwrap();
+        }
+    });
 
     let pool: ThreadPool = rayon::ThreadPoolBuilder::new().num_threads(4).build().unwrap();
     pool.install(|| {
@@ -110,17 +119,8 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             let mut vtex_cmd_child = vtex_cmd.output();
             let stdout = vtex_cmd_child.unwrap().stdout;
             tx.send(stdout.clone()).unwrap();
-            println!("{:?}", stdout);
+            info!("{}", String::from_utf8(stdout).unwrap().as_str());
         });
-    });
-
-    rx.iter().for_each(|x| {
-        app_weak.upgrade_in_event_loop(move |app| {
-            let mut logs = app.global::<TextLogic>().get_logs();
-            logs.push_str(String::from_utf8(x).unwrap().as_str());
-            logs.push_str("\n");
-            app.global::<TextLogic>().set_logs(logs);
-        }).unwrap();
     });
 
     /*app_weak.upgrade_in_event_loop(move |app| {
@@ -136,7 +136,7 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot delete file :, {}", err.to_string()))
+                    .set_description(&format!("Cannot delete file :, {}", err))
                     .show();
             }
         }

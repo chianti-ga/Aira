@@ -14,7 +14,7 @@ use log4rs::encode::pattern::PatternEncoder;
 use rfd::FileDialog;
 use slint::{SharedString, Weak};
 
-use crate::compile_logic::{CompileLogicMessage, init_thread};
+use crate::compile_logic::{CompileLogicMessage, init_logic_thread};
 use crate::config::{load_from_config, save_to_config};
 use crate::tools_utils::ToolsPaths;
 
@@ -55,7 +55,7 @@ fn main() {
     let app_window: App = App::new().unwrap();
 
     let (tx, rx) = mpsc::channel();
-    init_thread(rx);
+    init_logic_thread(rx);
 
     update_path_ui(&app_window);
     set_props_page_callbacks(&app_window, tx);

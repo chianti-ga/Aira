@@ -74,14 +74,16 @@ component AppPage inherits GridLayout {
             Rectangle {
                 background: #00000080;
                 ScrollView {
-                    viewport-height: parent.height;
-                    console_logs := TextInput {
-                        input-type: text;
-                        color: white;
-                        read-only:true;
-                        single-line: false;
-                        wrap: word-wrap;
-                        text: TextLogic.logs;
+                    VerticalLayout {
+                        console_logs := TextInput {
+                            input-type: text;
+                            color: white;
+                            read-only:true;
+                            single-line: false;
+                            wrap: word-wrap;
+                            text: TextLogic.logs;
+
+                        }
                     }
                 }
             }
