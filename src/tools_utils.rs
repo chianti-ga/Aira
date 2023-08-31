@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::fs::{copy, create_dir_all, File, remove_dir_all, remove_file};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
-use std::sync::{Mutex, MutexGuard};
+use std::process::{Command, Stdio};
+use std::sync::{mpsc, Mutex, MutexGuard};
 
 use lazy_static::lazy_static;
 use log::{debug, error};
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use slint::{ComponentHandle, Weak};
 use walkdir::WalkDir;
 
-use crate::App;
+use crate::{App, TextLogic};
 
 lazy_static! {
     static ref BASE_NAMES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
@@ -33,7 +33,13 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
     let vtex: &Path = tools_paths.vtex2.as_path();
     let materials_out = out_path.join("materials/");
     match remove_dir_all(materials_out.clone()) {
-        Ok(_) => {}
+        Ok(_) => {
+            app_weak.upgrade_in_event_loop(move |app| {
+                let mut logs = app.global::<TextLogic>().get_logs();
+                logs.push_str("Cleaning up output folder...\n");
+                app.global::<TextLogic>().set_logs(logs);
+            }).unwrap();
+        }
         Err(err) => {
             error!("{:?}", err);
             MessageDialog::new()
@@ -46,7 +52,13 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
     let mut textures_files: Vec<String> = Vec::new();
 
     match create_dir_all(&materials_out) {
-        Ok(_) => {}
+        Ok(_) => {
+            app_weak.upgrade_in_event_loop(move |app| {
+                let mut logs = app.global::<TextLogic>().get_logs();
+                logs.push_str("Creating materials folder...\n");
+                app.global::<TextLogic>().set_logs(logs);
+            }).unwrap();
+        }
         Err(err) => {
             error!("{:?}", err);
             MessageDialog::new()
@@ -56,6 +68,13 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
                 .show();
         }
     }
+
+    app_weak.upgrade_in_event_loop(move |app| {
+        let mut logs = app.global::<TextLogic>().get_logs();
+        logs.push_str("Copying textures files...\n");
+        app.global::<TextLogic>().set_logs(logs);
+    }).unwrap();
+
     WalkDir::new(materials_path).into_iter().filter_map(|e| e.ok()).for_each(|entry| {
         if entry.file_type().is_file() {
             let entry_path: String = entry.path().to_string_lossy().to_string();
@@ -64,21 +83,50 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             let base_name: String = final_filename.replace(entry.file_name().to_str().unwrap(), "");
             BASE_NAMES.lock().unwrap().insert(base_name);
 
-            copy(entry.path(), materials_out.join(final_filename.as_str())).unwrap();
+            let final_file = materials_out.join(final_filename.as_str());
+
+            copy(entry.path(), final_file.clone()).unwrap();
+
+            app_weak.upgrade_in_event_loop(move |app| {
+                let mut logs = app.global::<TextLogic>().get_logs();
+                logs.push_str(format!("{} => {}\n", entry.path().to_string_lossy(), final_file.to_string_lossy()).as_str());
+                app.global::<TextLogic>().set_logs(logs);
+            }).unwrap();
+
             textures_files.push(final_filename.clone());
         }
     });
+
+    let (tx, rx) = mpsc::channel();
 
     let pool: ThreadPool = rayon::ThreadPoolBuilder::new().num_threads(4).build().unwrap();
     pool.install(|| {
         textures_files.par_iter().for_each(|file| {
             let mut vtex_cmd: Command = Command::new(vtex);
             vtex_cmd.args(["convert", "-c", "9", "-f", "dxt5", file.as_str()])
-                .current_dir(&materials_out);
+                .current_dir(&materials_out)
+                .stdout(Stdio::piped());
 
-            let mut vtex_cmd_child: Child = vtex_cmd.spawn().unwrap();
+            let mut vtex_cmd_child = vtex_cmd.output();
+            let stdout = vtex_cmd_child.unwrap().stdout;
+            tx.send(stdout.clone()).unwrap();
+            println!("{:?}", stdout);
         });
     });
+
+    rx.iter().for_each(|x| {
+        app_weak.upgrade_in_event_loop(move |app| {
+            let mut logs = app.global::<TextLogic>().get_logs();
+            logs.push_str(String::from_utf8(x).unwrap().as_str());
+            logs.push_str("\n");
+            app.global::<TextLogic>().set_logs(logs);
+        }).unwrap();
+    });
+
+    /*app_weak.upgrade_in_event_loop(move |app| {
+        let logs = app.global::<TextLogic>().get_logs();
+        app.global::<TextLogic>().set_logs(logs);
+    }).unwrap();*/
 
     WalkDir::new(materials_out).into_iter().filter_map(|e| e.ok()).filter(|file| file.file_name().to_str().unwrap().contains(".png")).for_each(|entry| {
         match remove_file(entry.path()) {

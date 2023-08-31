@@ -1,8 +1,8 @@
 #![allow(clippy::single_match)]
 
+use std::thread;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
-use std::thread;
 
 use slint::{ComponentHandle, SharedString, Weak};
 
@@ -37,6 +37,7 @@ pub fn init_thread(rx: Receiver<CompileLogicMessage>) {
 
                             vtex_compile(app_weak.clone(), Path::new(compilation_out_path.as_str()), Path::new(materials_path.as_str()), TOOLS_PATHS.lock().unwrap());
                             vmt_generate(app_weak.clone(), Path::new(compilation_out_path.as_str()));
+
                             app_weak.clone().upgrade_in_event_loop(move |app| app.global::<BtnLogic>().set_is_enabled(true)).unwrap();
                         }
                         CompileLogicMessage::QCProps(app_weak) => {}
