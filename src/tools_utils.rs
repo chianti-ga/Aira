@@ -206,12 +206,16 @@ pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
             }
         }
     });
-    base_names.clear();
 }
 
 // https://developer.valvesoftware.com/wiki/StudioMDL_(Source_1)
-pub fn studiomdl_compile(game_path: &Path, qc_file_path: &Path, tools_paths: ToolsPaths, app: &App) {
+pub fn studiomdl_compile(app_weak: Weak<App>, game_path: &Path, qc_file_path: &Path, tools_paths: ToolsPaths) {
     let studio_mdl: &Path = tools_paths.studio_mdl.as_path();
 
     let studio_mdl_cmd: &mut Command = Command::new(studio_mdl).args(["-game", game_path.to_str().unwrap(), "-nop4", "-verbose", qc_file_path.to_str().unwrap()]);
+    cleanup();
+}
+
+fn cleanup(){
+    BASE_NAMES.lock().unwrap().clear();
 }
