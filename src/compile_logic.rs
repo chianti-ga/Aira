@@ -1,8 +1,6 @@
-#![allow(clippy::single_match)]
-
-use std::thread;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
+use std::thread;
 
 use slint::{ComponentHandle, SharedString, Weak};
 

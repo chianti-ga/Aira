@@ -2,8 +2,9 @@ use std::collections::HashSet;
 use std::fs::{copy, create_dir_all, File, remove_dir_all, remove_file};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::sync::{mpsc, Mutex, MutexGuard};
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 use lazy_static::lazy_static;
@@ -13,7 +14,7 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use rfd::{MessageDialog, MessageLevel};
 use serde::{Deserialize, Serialize};
-use slint::{ComponentHandle, Weak};
+use slint::{ComponentHandle, SharedString, Weak};
 use walkdir::WalkDir;
 
 use crate::{App, TextLogic};
@@ -32,11 +33,11 @@ pub struct ToolsPaths {
 // https://github.com/StrataSource/vtex2/
 pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path, tools_paths: MutexGuard<ToolsPaths>) {
     let vtex: &Path = tools_paths.vtex2.as_path();
-    let materials_out = out_path.join("materials/");
+    let materials_out: PathBuf = out_path.join("materials/");
     match remove_dir_all(materials_out.clone()) {
         Ok(_) => {
             app_weak.upgrade_in_event_loop(move |app| {
-                let mut logs = app.global::<TextLogic>().get_logs();
+                let mut logs: SharedString = app.global::<TextLogic>().get_logs();
                 logs.push_str("Cleaning up output folder...\n");
                 app.global::<TextLogic>().set_logs(logs);
             }).unwrap();
@@ -55,7 +56,7 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
     match create_dir_all(&materials_out) {
         Ok(_) => {
             app_weak.upgrade_in_event_loop(move |app| {
-                let mut logs = app.global::<TextLogic>().get_logs();
+                let mut logs: SharedString = app.global::<TextLogic>().get_logs();
                 logs.push_str("Creating materials folder...\n");
                 app.global::<TextLogic>().set_logs(logs);
             }).unwrap();
@@ -71,7 +72,7 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
     }
 
     app_weak.upgrade_in_event_loop(move |app| {
-        let mut logs = app.global::<TextLogic>().get_logs();
+        let mut logs: SharedString = app.global::<TextLogic>().get_logs();
         logs.push_str("Copying textures files...\n");
         app.global::<TextLogic>().set_logs(logs);
     }).unwrap();
@@ -84,27 +85,34 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
             let base_name: String = final_filename.replace(entry.file_name().to_str().unwrap(), "");
             BASE_NAMES.lock().unwrap().insert(base_name);
 
-            let final_file = materials_out.join(final_filename.as_str());
+            let final_file: PathBuf = materials_out.join(final_filename.as_str());
 
             copy(entry.path(), final_file.clone()).unwrap();
 
             app_weak.upgrade_in_event_loop(move |app| {
-                let mut logs = app.global::<TextLogic>().get_logs();
+                let mut logs: SharedString = app.global::<TextLogic>().get_logs();
                 logs.push_str(format!("{} => {}\n", entry.path().to_string_lossy(), final_file.to_string_lossy()).as_str());
                 app.global::<TextLogic>().set_logs(logs);
             }).unwrap();
 
-            textures_files.push(final_filename.clone());
+            textures_files.push(final_filename.clone().trim_end_matches('_').to_string());
         }
     });
 
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        for x in rx {
+    let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
+    thread::spawn(move || loop {
+        if let Ok(msg) = rx.recv() {
+            if msg.contains("stop") {
+                break;
+            }
             app_weak.upgrade_in_event_loop(move |app| {
-        let logs = app.global::<TextLogic>().get_logs();
-        app.global::<TextLogic>().set_logs(logs);
-    }).unwrap();
+                let mut logs: SharedString = app.global::<TextLogic>().get_logs();
+                logs.push_str(msg.as_str().trim_end_matches("\n"));
+                logs.push_str("\n");
+                app.global::<TextLogic>().set_logs(logs);
+            }).unwrap();
+
+            debug!("bite")
         }
     });
 
@@ -116,12 +124,14 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
                 .current_dir(&materials_out)
                 .stdout(Stdio::piped());
 
-            let mut vtex_cmd_child = vtex_cmd.output();
-            let stdout = vtex_cmd_child.unwrap().stdout;
-            tx.send(stdout.clone()).unwrap();
+            let vtex_cmd_child: std::io::Result<Output> = vtex_cmd.output();
+            let stdout: Vec<u8> = vtex_cmd_child.unwrap().stdout;
+            tx.send(String::from_utf8(stdout.clone()).unwrap()).unwrap();
             info!("{}", String::from_utf8(stdout).unwrap().as_str());
         });
     });
+
+    let _ = tx.send(String::from("stop"));
 
     /*app_weak.upgrade_in_event_loop(move |app| {
         let logs = app.global::<TextLogic>().get_logs();
@@ -144,19 +154,19 @@ pub fn vtex_compile(app_weak: Weak<App>, out_path: &Path, materials_path: &Path,
 }
 
 pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
-    let materials_out = out_path.join("materials/");
+    let materials_out: PathBuf = out_path.join("materials/");
 
-    let base_names = BASE_NAMES.lock().unwrap();
+    let mut base_names: MutexGuard<HashSet<String>> = BASE_NAMES.lock().unwrap();
     base_names.par_iter().for_each(|base_name| {
         let mut base_color: String = base_name.clone();
-        base_color.push_str("basecolor");
+        base_color.push_str("_basecolor");
 
         let mut normal_map: String = base_name.clone();
-        normal_map.push_str("normal");
+        normal_map.push_str("_normal");
 
         let mut env_map: String = base_name.clone();
-        env_map.push_str("envmap");
-        let mut vmt_filename = base_name.clone().trim_end_matches('_').to_string();
+        env_map.push_str("_envmap");
+        let mut vmt_filename = base_name.clone();
         vmt_filename.push_str(".vmt");
 
         let mut vmt_string: String = String::from("\"VertexlitGeneric\"\n");
@@ -178,7 +188,7 @@ pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot create vmt file :, {}", err.to_string()))
+                    .set_description(&format!("Cannot create vmt file :, {}", err))
                     .show();
                 return;
             }
@@ -191,11 +201,12 @@ pub fn vmt_generate(app_weak: Weak<App>, out_path: &Path) {
                 MessageDialog::new()
                     .set_title("Error")
                     .set_level(MessageLevel::Error)
-                    .set_description(&format!("Cannot write to vmt file :, {}", err.to_string()))
+                    .set_description(&format!("Cannot write to vmt file :, {}", err))
                     .show();
             }
         }
     });
+    base_names.clear();
 }
 
 // https://developer.valvesoftware.com/wiki/StudioMDL_(Source_1)

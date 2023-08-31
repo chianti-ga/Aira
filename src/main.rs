@@ -2,13 +2,13 @@ extern crate core;
 
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Mutex, MutexGuard};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Receiver, Sender};
 
 use lazy_static::lazy_static;
 use log::{info, LevelFilter};
+use log4rs::{Config, Handle};
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
-use log4rs::Config;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use rfd::FileDialog;
@@ -32,29 +32,29 @@ lazy_static! {
 }
 
 fn main() {
-    let log_stdout = ConsoleAppender::builder()
+    let log_stdout: ConsoleAppender = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
         .build();
 
-    let log_file_appender = FileAppender::builder()
+    let log_file_appender: FileAppender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
         .build("logs.txt")
         .unwrap();
 
-    let config = Config::builder()
+    let config: Config = Config::builder()
         .appender(Appender::builder().build("stdout", Box::new(log_stdout)))
         .appender(Appender::builder().build("logs_file", Box::new(log_file_appender)))
         .build(Root::builder().appender("stdout").build(LevelFilter::max()))
         .unwrap();
 
-    let handle_log = log4rs::init_config(config).unwrap();
+    let handle_log: Handle = log4rs::init_config(config).unwrap();
 
     slint::init_translations!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
 
     info!("Init app window");
     let app_window: App = App::new().unwrap();
 
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx): (Sender<CompileLogicMessage>, Receiver<CompileLogicMessage>) = mpsc::channel();
     init_logic_thread(rx);
 
     update_path_ui(&app_window);
@@ -171,7 +171,7 @@ fn set_settings_page_callbacks(app: &App) {
         match vtf_bin_dir {
             None => app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from("")),
             Some(vtf_buf) => {
-                let vtf_path = vtf_buf.as_path();
+                let vtf_path: &Path = vtf_buf.as_path();
 
                 app_weak.global::<FilesPathsLogic>().set_vtf_bin_path(SharedString::from(vtf_path.to_str().unwrap_or("INVALID")));
 
