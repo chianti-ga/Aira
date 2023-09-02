@@ -1,4 +1,4 @@
-import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView, TabWidget, TextEdit} from "std-widgets.slint";
+import { VerticalBox , LineEdit, Button, ScrollView, CheckBox, ListView, TabWidget, TextEdit, ProgressIndicator} from "std-widgets.slint";
 
 export global AppStyle {
     out property<length> HEADING_1 :28px;
@@ -22,7 +22,9 @@ export global CompileLogic {
     in-out property<string> surfaceprop;
     in-out property<string> contents;
     in-out property<string> cbox;
-    in-out property<bool> is-enabled:true;
+    in-out property<float> percentage;
+
+    in-out property<bool> use-default:true;
 }
 
 export global FilesPathsLogic {
@@ -38,6 +40,7 @@ export global TextLogic {
     in-out property<string> logs;
     in-out property<string> qc_file_viewer;
     in-out property<string> gmod_bin_verif_text;
+    in-out property<string> progress-text;
 }
 
 component AppBox inherits Rectangle {
@@ -252,34 +255,49 @@ export component App inherits Window {
 
                         CheckBox {
                             text: "Default";
+                            checked:CompileLogic.use-default;
                             toggled => {
-                                if (CompileLogic.is-enabled) {
-                                    CompileLogic.is-enabled=false;
-                                } else {CompileLogic.is-enabled=true;}
+                                if (CompileLogic.use-default) {
+                                    CompileLogic.use-default=false;
+                                } else {CompileLogic.use-default=true;}
                             }
                         }
                         LineEdit {
                             placeholder-text: "mass in KG";
-                            read-only: !CompileLogic.is-enabled;
+                            read-only: !CompileLogic.use-default;
                             text: CompileLogic.mass;
                         }
                         LineEdit {
                             placeholder-text: "surfaceprop";
-                            read-only: !CompileLogic.is-enabled;
+                            read-only: !CompileLogic.use-default;
                             text: CompileLogic.surfaceprop;
                         }
                         LineEdit {
                             placeholder-text: "contents";
-                            read-only: !CompileLogic.is-enabled;
+                            read-only: !CompileLogic.use-default;
                             text: CompileLogic.contents;
                         }
 
                         LineEdit {
                             placeholder-text: "cbox";
-                            read-only: !CompileLogic.is-enabled;
+                            read-only: !CompileLogic.use-default;
                             text: CompileLogic.cbox;
                         }
 
+                    }
+                }
+
+                VerticalBox {
+                    row: 3;
+                    colspan: 4;
+                    Text {
+                        text: TextLogic.progress-text;
+                        font-size: AppStyle.HEADING_2;
+                        horizontal-alignment: center;
+                    }
+                    ProgressIndicator {
+                        height: 5px;
+                        progress: CompileLogic.percentage;
                     }
                 }
             }
