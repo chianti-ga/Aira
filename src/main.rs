@@ -8,7 +8,6 @@ use lazy_static::lazy_static;
 use log::{info, LevelFilter};
 use log4rs::{Config, Handle};
 use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use rfd::FileDialog;
@@ -16,6 +15,7 @@ use slint::{SharedString, Weak};
 
 use crate::compile_logic::{CompileLogicMessage, init_logic_thread};
 use crate::config::{load_from_config, save_to_config};
+use crate::qc::{CBOX_DEFAULT, CollisionModel, PropsData};
 use crate::tools_utils::ToolsPaths;
 
 mod tools_utils;
@@ -36,14 +36,14 @@ fn main() {
         .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
         .build();
 
-    let log_file_appender: FileAppender = FileAppender::builder()
+    /*let log_file_appender: FileAppender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} {l} {m}{n}")))
         .build("logs.txt")
-        .unwrap();
+        .unwrap();*/
 
     let config: Config = Config::builder()
         .appender(Appender::builder().build("stdout", Box::new(log_stdout)))
-        .appender(Appender::builder().build("logs_file", Box::new(log_file_appender)))
+        //.appender(Appender::builder().build("logs_file", Box::new(log_file_appender)))
         .build(Root::builder().appender("stdout").build(LevelFilter::max()))
         .unwrap();
 
@@ -112,10 +112,61 @@ fn set_props_page_callbacks(app: &App, tx: Sender<CompileLogicMessage>) {
 
     let app_weak: Weak<App> = app.as_weak().clone();
     btn_logic.on_btn_compile(move || {
+        let model_path_string = app_weak.unwrap().global::<FilesPathsLogic>().get_models_path().clone();
+        let model_path = Path::new(model_path_string.as_str());
+        let model_name = Path::new("aira_temp").join(model_path.file_name().unwrap().to_str().unwrap()).as_path().to_str().unwrap().to_string();
+
+        let use_default = app_weak.unwrap().global::<CompileLogic>().get_use_default();
+        let surface_prop = if use_default { "default".to_string() } else { app_weak.unwrap().global::<CompileLogic>().get_surfaceprop().to_string() };
+        let contents = if use_default { "solid".to_string() } else { app_weak.unwrap().global::<CompileLogic>().get_contents().to_string() };
+        let cbox = if use_default { CBOX_DEFAULT.to_string() } else { app_weak.unwrap().global::<CompileLogic>().get_cbox().to_string() };
+        let mass: String = app_weak.unwrap().global::<CompileLogic>().get_mass().to_string();
+
+        println!("{}", model_name);
+
+        let props_data = PropsData {
+            modelname: model_name.to_lowercase().clone(),
+            body: model_path_string.to_string(),
+            surfaceprop: surface_prop,
+            contents,
+            cdmaterials: app_weak.unwrap().global::<FilesPathsLogic>().get_models_path().to_string(),
+            sequence: model_path_string.to_string(),
+            texturegroup: vec![],
+            cbox,
+            collisionmodel: if use_default {
+                CollisionModel::default()
+            } else {
+                CollisionModel {
+                    modelname: model_path_string.to_string(),
+                    automass: false,
+                    mass,
+                    concave: true,
+                }
+            },
+        };
+
+        app_weak.upgrade_in_event_loop({
+            let props_data = props_data.clone();
+            move |app| {
+                app.global::<TextLogic>().set_qc_file_viewer(SharedString::from(props_data.to_string()));
+            }
+        }).expect(ERROR_THREAD);
+
         tx.send(CompileLogicMessage::Texture {
             app_weak: app_weak.clone(),
             materials_path: app_weak.unwrap().global::<FilesPathsLogic>().get_materials_path().clone(),
             compilation_out_path: app_weak.unwrap().global::<FilesPathsLogic>().get_compilation_out_path().clone(),
+        }).expect(ERROR_THREAD);
+        tx.send(CompileLogicMessage::QCProps {
+            app_weak: app_weak.clone(),
+            props_data: Box::from(props_data.clone()),
+            model_path: model_path_string.clone(),
+            compilation_out_path: app_weak.unwrap().global::<FilesPathsLogic>().get_compilation_out_path().clone(),
+        }).expect(ERROR_THREAD);
+        tx.send(CompileLogicMessage::StudioMdl {
+            app_weak: app_weak.clone(),
+            compilation_out_path: app_weak.unwrap().global::<FilesPathsLogic>().get_compilation_out_path().clone(),
+            model_path: model_path_string,
         }).expect(ERROR_THREAD);
     });
 }
